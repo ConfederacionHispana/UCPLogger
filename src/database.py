@@ -1,6 +1,7 @@
-import sqlite3
 from src.config import settings
+import psycopg2
+import psycopg2.extras
+import os
 
-db_connection = sqlite3.connect(settings.get("database_path", 'rcgcdb.db'))
-db_connection.row_factory = sqlite3.Row
-db_cursor = db_connection.cursor()
+db_connection = psycopg2.connect(os.environ['DATABASE_URL'])
+db_cursor = db_connection.cursor(cursor_factory = psycopg2.extras.DictCursor)

@@ -20,7 +20,7 @@ default_header["X-RateLimit-Precision"] = "millisecond"
 
 # User facing webhook functions
 async def wiki_removal(wiki_url, status):
-	for observer in db_cursor.execute('SELECT webhook, lang FROM rcgcdw WHERE wiki = ?', (wiki_url,)):
+	for observer in db_cursor.execute('SELECT webhook, lang FROM wikis WHERE wiki = %s', (wiki_url,)):
 		_ = langs[observer["lang"]]["discord"].gettext
 		reasons = {410: _("wiki deleted"), 404: _("wiki deleted"), 401: _("wiki inaccessible"),
 		           402: _("wiki inaccessible"), 403: _("wiki inaccessible"), 1000: _("discussions disabled")}
@@ -124,7 +124,7 @@ async def send_to_discord_webhook_monitoring(data: DiscordMessage):
 	header['Content-Type'] = 'application/json'
 	async with aiohttp.ClientSession(headers=header, timeout=aiohttp.ClientTimeout(5.0)) as session:
 		try:
-			result = await session.post("https://discord.com/api/webhooks/"+settings["monitoring_webhook"], data=repr(data))
+			result = await session.post("https://discord.com/api/webhooks/"+os.environ['MONITORING_WEBHOOK'], data=repr(data))
 		except (aiohttp.ClientConnectionError, aiohttp.ServerConnectionError):
 			logger.exception("Could not send the message to Discord")
 			return 3
@@ -159,7 +159,7 @@ async def handle_discord_http(code: int, formatted_embed: str, result: aiohttp.C
 		return 1
 	elif code == 401 or code == 404:  # HTTP UNAUTHORIZED AND NOT FOUND
 		logger.error("Webhook URL is invalid or no longer in use, please replace it with proper one.")
-		db_cursor.execute("DELETE FROM rcgcdw WHERE webhook = ?", (webhook_url,))
+		db_cursor.execute("DELETE FROM wikis WHERE webhook = %s", (webhook_url,))
 		await webhook_removal_monitor(webhook_url, code)
 		return 1
 	elif code == 429:

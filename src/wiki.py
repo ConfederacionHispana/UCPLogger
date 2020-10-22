@@ -109,8 +109,8 @@ class Wiki:
 		logger.info("Removing a wiki {}".format(wiki_url))
 		await src.discord.wiki_removal(wiki_url, reason)
 		await src.discord.wiki_removal_monitor(wiki_url, reason)
-		db_cursor.execute('DELETE FROM rcgcdw WHERE wiki = ?', (wiki_url,))
-		logger.warning('{} rows affected by DELETE FROM rcgcdw WHERE wiki = "{}"'.format(db_cursor.rowcount, wiki_url))
+		db_cursor.execute('DELETE FROM wikis WHERE wiki = %s', (wiki_url,))
+		logger.warning('{} rows affected by DELETE FROM wikis WHERE wiki = "{}"'.format(db_cursor.rowcount, wiki_url))
 		db_connection.commit()
 
 	async def pull_comment(self, comment_id, WIKI_API_PATH, rate_limiter):
