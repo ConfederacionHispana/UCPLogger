@@ -3,7 +3,7 @@
         "user-agent": "iwi/{version}"
     },
     "max_requests_per_minute": 60,
-    "minimal_cooldown_per_wiki_in_sec": 10,
+    "minimal_cooldown_per_wiki_in_sec": 5,
     "support": "https://discord.gg/o.o",
     "logging": {
         "version": 1,

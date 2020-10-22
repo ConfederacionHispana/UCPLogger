@@ -130,14 +130,14 @@ class RcQueue:
 					pass
 				try:
 					current_domain: dict = self[domain]
-					if not db_wiki["configid"] < current_domain["last_rowid"]:
+					if not int(db_wiki["configid"]) < int(current_domain["last_rowid"]):
 						current_domain["query"].append(QueuedWiki(db_wiki["wiki"], 20))
 				except KeyError:
 					await self.start_group(domain, [QueuedWiki(db_wiki["wiki"], 20)])
 					logger.info("A new domain group ({}) has been added since last time, adding it to the domain_list and starting a task...".format(domain))
 				except ListFull:
 					full.append(domain)
-					current_domain["last_rowid"] = db_wiki["configid"]
+					current_domain["last_rowid"] = int(db_wiki["configid"])
 					continue
 			for wiki in self.to_remove:
 				await self.remove_wiki_from_group(wiki)
