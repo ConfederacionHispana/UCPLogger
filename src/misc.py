@@ -73,7 +73,7 @@ def parse_link(domain: str, to_parse: str) -> str:
 
 def link_formatter(link: str) -> str:
 	"""Formats a link to not embed it"""
-	return "<" + re.sub(r"([)])", "\\\\\\1", link).replace(" ", "_") + ">"
+	return "<" + re.sub(r"([)])", "\\\\\\1", link).replace(" ", "_").replace("(", "%28").replace(")", "%29") + ">"
 
 
 def escape_formatting(data: str) -> str:
@@ -83,7 +83,7 @@ def escape_formatting(data: str) -> str:
 
 def create_article_path(article: str, WIKI_ARTICLE_PATH: str) -> str:
 	"""Takes the string and creates an URL with it as the article name"""
-	article = article.replace(" ", "_").replace("%", "%25").replace("\\", "%5C")
+	article = article.replace(" ", "_").replace("%", "%25").replace("\\", "%5C").replace("(", "%28").replace(")", "%29")
 	if "?" in WIKI_ARTICLE_PATH:
 		article = article.replace("&", "%26")
 	else:

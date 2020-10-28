@@ -42,22 +42,28 @@ async def feeds_compact_formatter(post_type, post, message_target, wiki, article
 		if post["forumName"].endswith(' Message Wall'):
 			user_wall = post["forumName"][:-13]
 		if not post["isReply"]:
-			message = "✉️ "+_("[{author}]({author_url}) created [{title}](<{url}wiki/Message_Wall:{user_wall}?threadId={threadId}>) on [{user}'s Message Wall](<{url}wiki/Message_Wall:{user_wall}>)").format(author=author, author_url=author_url, title=post["title"], url=wiki, user=user_wall, user_wall=quote_plus(user_wall.replace(" ", "_")), threadId=post["threadId"])
+			message = "✉️ "+_("[{author}]({author_url}) created [{title}](<{url}wiki/Message_Wall:{user_wall}?threadId={threadId}>) on [{user}'s Message Wall](<{url}wiki/Message_Wall:{user_wall}>)").format(author=author, author_url=author_url, title=post["title"], url=wiki, user=user_wall, user_wall=quote_plus(user_wall.replace(" ", "_").replace("(", "%28").replace(")", "%29")), threadId=post["threadId"])
 		else:
-			message = "📩 "+_("[{author}]({author_url}) created a [reply](<{url}wiki/Message_Wall:{user_wall}?threadId={threadId}#{replyId}>) to [{title}](<{url}wiki/Message_Wall:{user_wall}?threadId={threadId}>) on [{user}'s Message Wall](<{url}wiki/Message_Wall:{user_wall}>)").format(author=author, author_url=author_url, url=wiki, title=post["_embedded"]["thread"][0]["title"], user=user_wall, user_wall=quote_plus(user_wall.replace(" ", "_")), threadId=post["threadId"], replyId=post["id"])
+			message = "📩 "+_("[{author}]({author_url}) created a [reply](<{url}wiki/Message_Wall:{user_wall}?threadId={threadId}#{replyId}>) to [{title}](<{url}wiki/Message_Wall:{user_wall}?threadId={threadId}>) on [{user}'s Message Wall](<{url}wiki/Message_Wall:{user_wall}>)").format(author=author, author_url=author_url, url=wiki, title=post["_embedded"]["thread"][0]["title"], user=user_wall, user_wall=quote_plus(user_wall.replace(" ", "_").replace("(", "%28").replace(")", "%29")), threadId=post["threadId"], replyId=post["id"])
 	elif post_type == "ARTICLE_COMMENT":
 		if article_page is None:
 			article_page = {"title": _("unknown"), "fullUrl": wiki}  # No page known
 		if not post["isReply"]:
-			message = "🗒️ "+_("[{author}]({author_url}) created a [comment](<{url}?commentId={commentId}>) on [{article}](<{url}>)").format(author=author, author_url=author_url, url=article_page["fullUrl"], article=article_page["title"], commentId=post["threadId"])
+			message = "🗒️ "+_("[{author}]({author_url}) created a [comment](<{url}?commentId={commentId}>) on [{article}](<{url}>)").format(author=author, author_url=author_url, url=article_page["fullUrl"].replace("(", "%28").replace(")", "%29"), article=article_page["title"], commentId=post["threadId"])
 		else:
-			message = "🗒️ "+_("[{author}]({author_url}) created a [reply](<{url}?commentId={commentId}&replyId={replyId}>) to a [comment](<{url}?commentId={commentId}>) on [{article}](<{url}>)").format(author=author, author_url=author_url, url=article_page["fullUrl"], article=article_page["title"], commentId=post["threadId"], replyId=post["id"])
+			message = "🗒️ "+_("[{author}]({author_url}) created a [reply](<{url}?commentId={commentId}&replyId={replyId}>) to a [comment](<{url}?commentId={commentId}>) on [{article}](<{url}>)").format(author=author, author_url=author_url, url=article_page["fullUrl"].replace("(", "%28").replace(")", "%29"), article=article_page["title"], commentId=post["threadId"], replyId=post["id"])
 	else:
 		logger.warning("No entry for {event} with params: {params}".format(event=post_type, params=post))
 		if not settings["support"]:
 			return
 		else:
 			message = "❓ "+_("Unknown event `{event}` by [{author}]({author_url}), report it on the [support server](<{support}>).").format(event=post_type, author=author, author_url=author_url, support=settings["support"])
+	if post_type == "FORUM" or post_type == "WALL" or post_type == "ARTICLE_COMMENT":
+		if post.get("jsonModel") is not None:
+			npost = DiscussionsFromHellParser(post, wiki)
+			message += ": \"{content}\"".format(content=npost.parse().replace("\n", ""))
+		else:  # Fallback when model is not available
+			message += ": \"{content}\"".format(content=post.get("rawContent", "").replace("\n", ""))
 	await send_to_discord(DiscordMessage("compact", "discussion", message_target[1], content=message, wiki=wiki))
 
 
@@ -129,22 +135,22 @@ async def feeds_embed_formatter(post_type, post, message_target, wiki, article_p
 			user_wall = post["forumName"][:-13]
 		if not post["isReply"]:
 			embed.event_type = "discussion/wall/post"
-			embed["url"] = "{url}wiki/Message_Wall:{user_wall}?threadId={threadId}".format(url=wiki, user_wall=quote_plus(user_wall.replace(" ", "_")), threadId=post["threadId"])
+			embed["url"] = "{url}wiki/Message_Wall:{user_wall}?threadId={threadId}".format(url=wiki, user_wall=quote_plus(user_wall.replace(" ", "_").replace("(", "%28").replace(")", "%29")), threadId=post["threadId"])
 			embed["title"] = _("Created \"{title}\" on {user}'s Message Wall").format(title=post["title"], user=user_wall)
 		else:
 			embed.event_type = "discussion/wall/reply"
-			embed["url"] = "{url}wiki/Message_Wall:{user_wall}?threadId={threadId}#{replyId}".format(url=wiki, user_wall=quote_plus(user_wall.replace(" ", "_")), threadId=post["threadId"], replyId=post["id"])
+			embed["url"] = "{url}wiki/Message_Wall:{user_wall}?threadId={threadId}#{replyId}".format(url=wiki, user_wall=quote_plus(user_wall.replace(" ", "_").replace("(", "%28").replace(")", "%29")), threadId=post["threadId"], replyId=post["id"])
 			embed["title"] = _("Replied to \"{title}\" on {user}'s Message Wall").format(title=post["_embedded"]["thread"][0]["title"], user=user_wall)
 	elif post_type == "ARTICLE_COMMENT":
 		if article_page is None:
 			article_page = {"title": _("unknown"), "fullUrl": wiki}  # No page known
 		if not post["isReply"]:
 			embed.event_type = "discussion/comment/post"
-			embed["url"] = "{url}?commentId={commentId}".format(url=article_page["fullUrl"], commentId=post["threadId"])
+			embed["url"] = "{url}?commentId={commentId}".format(url=article_page["fullUrl"].replace("(", "%28").replace(")", "%29"), commentId=post["threadId"])
 			embed["title"] = _("Commented on {article}").format(article=article_page["title"])
 		else:
 			embed.event_type = "discussion/comment/reply"
-			embed["url"] = "{url}?commentId={commentId}&replyId={replyId}".format(url=article_page["fullUrl"], commentId=post["threadId"], replyId=post["id"])
+			embed["url"] = "{url}?commentId={commentId}&replyId={replyId}".format(url=article_page["fullUrl"].replace("(", "%28").replace(")", "%29"), commentId=post["threadId"], replyId=post["id"])
 			embed["title"] = _("Replied to a comment on {article}").format(article=article_page["title"])
 		embed["footer"]["text"] = article_page["title"]
 	else:
