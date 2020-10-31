@@ -19,8 +19,6 @@ WITH (
 )
 TABLESPACE pg_default;
 
-ALTER TABLE public.wikis
-    OWNER to postgres;
 -- Index: idx_webhooks
 
 -- DROP INDEX public.idx_webhooks;
