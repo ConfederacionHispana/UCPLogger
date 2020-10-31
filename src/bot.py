@@ -74,7 +74,7 @@ class RcQueue:
 		"""Removes a wiki from query of given domain group"""
 		logger.debug(f"Removing {wiki} from group queue.")
 		group = get_domain(wiki)
-		self[group]["query"] = [x for x in self[group]["query"] if x.url != wiki]
+		self[group]["query"] = LimitedList([x for x in self[group]["query"] if x.url != wiki])
 		if not self[group]["query"]:  # if there is no wiki left in the queue, get rid of the task
 			logger.debug(f"{group} no longer has any wikis queued!")
 			all_wikis[wiki].rc_active = -1
@@ -84,12 +84,24 @@ class RcQueue:
 		self[group]["task"].cancel()
 		del self.domain_list[group]
 
+	def check_if_domain_in_db(self, domain):
+		db_cursor.execute('SELECT id, wiki_url, webhook, lang, display, wiki_id, rcid FROM wikis WHERE rcid != -1 ORDER BY id ASC')
+		for wiki in db_cursor.fetchall():
+			if get_domain(db_wiki["wiki_url"]) == domain:
+				return True
+		return False
+
 	@asynccontextmanager
 	async def retrieve_next_queued(self, group) -> Generator[QueuedWiki, None, None]:
 		"""Retrives next wiki in the queue for given domain"""
 		if len(self.domain_list[group]["query"]) == 0:
-			await self.stop_task_group(group)
-			return
+			# make sure we are not removing the group because entire domain group went down, it's expensive - yes, but could theoretically cause issues
+			if self.check_if_domain_in_db(group):
+				logger.warning("Domain group {} has 0 elements yet there are still wikis in the db of the same domain group! This may indicate we ran over the list too fast. We are waiting...".format(group))
+				raise QueueEmpty
+			else:
+				await self.stop_task_group(group)
+				return
 		try:
 			yield self.domain_list[group]["query"][0]
 		except asyncio.CancelledError:
@@ -115,7 +127,7 @@ class RcQueue:
 			db_cursor.execute(
 				'SELECT id, wiki_url, webhook, lang, display, wiki_id, rcid FROM wikis WHERE rcid != -1 OR rcid IS NULL ORDER BY id ASC')
 			self.to_remove = [x[0] for x in filter(self.filter_rc_active, all_wikis.items())]  # first populate this list and remove wikis that are still in the db, clean up the rest
-			full = []
+			full = set()
 			for db_wiki in db_cursor.fetchall():
 				domain = get_domain(db_wiki["wiki_url"])
 				try:
@@ -127,6 +139,8 @@ class RcQueue:
 					all_wikis[db_wiki["wiki_url"]].rc_active = db_wiki["rcid"]
 				except ValueError:
 					pass
+				if domain in full:
+					continue
 				try:
 					current_domain: dict = self[domain]
 					if not int(db_wiki["id"]) < int(current_domain["last_rowid"]):
@@ -135,7 +149,7 @@ class RcQueue:
 					await self.start_group(domain, [QueuedWiki(db_wiki["wiki_url"], 20)])
 					logger.info("A new domain group ({}) has been added since last time, adding it to the domain_list and starting a task...".format(domain))
 				except ListFull:
-					full.append(domain)
+					full.add(domain)
 					current_domain["last_rowid"] = int(db_wiki["id"])
 					continue
 			for wiki in self.to_remove:
@@ -289,7 +303,9 @@ async def scan_group(group: str):
 				DBHandler.update_db()
 		except asyncio.CancelledError:
 			return
-
+		except QueueEmpty:
+			await asyncio.sleep(21.0)
+			continue
 
 async def wiki_scanner():
 	"""Wiki scanner is spawned as a task which purpose is to continuously run over wikis in the DB, fetching recent changes
