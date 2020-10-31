@@ -54,10 +54,11 @@ async def feeds_compact_formatter(post_type, post, message_target, wiki, article
 			message = "🗒️ "+_("[{author}]({author_url}) created a [reply](<{url}?commentId={commentId}&replyId={replyId}>) to a [comment](<{url}?commentId={commentId}>) on [{article}](<{url}>)").format(author=author, author_url=author_url, url=article_page["fullUrl"].replace("(", "%28").replace(")", "%29"), article=article_page["title"], commentId=post["threadId"], replyId=post["id"])
 	else:
 		logger.warning("No entry for {event} with params: {params}".format(event=post_type, params=post))
-		if not settings["support"]:
-			return
-		else:
+		if "support" in settings:
 			message = "❓ "+_("Unknown event `{event}` by [{author}]({author_url}), report it on the [support server](<{support}>).").format(event=post_type, author=author, author_url=author_url, support=settings["support"])
+		else:
+			return
+	
 	if post_type == "FORUM" or post_type == "WALL" or post_type == "ARTICLE_COMMENT":
 		if post.get("jsonModel") is not None:
 			npost = DiscussionsFromHellParser(post, wiki)
@@ -158,7 +159,7 @@ async def feeds_embed_formatter(post_type, post, message_target, wiki, article_p
 		logger.warning("No entry for {event} with params: {params}".format(event=post_type, params=post))
 		embed["title"] = _("Unknown event `{event}`").format(event=post_type)
 		embed["color"] = 0
-		if settings["support"]:
+		if "support" in settings:
 			change_params = "[```json\n{params}\n```]({support})".format(params=json.dumps(post, indent=2), support=settings["support"])
 			if len(change_params) > 1000:
 				embed.add_field(_("Report this on the support server"), settings["support"])

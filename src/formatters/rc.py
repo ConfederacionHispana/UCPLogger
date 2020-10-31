@@ -359,10 +359,11 @@ async def compact_formatter(action, change, parsed_comment, categories, recent_c
 		content = "👁️ "+_("An action has been hidden by administration.")
 	else:
 		logger.warning("No entry for {event} with params: {params}".format(event=action, params=change))
-		if not settings["support"]:
-			content = "❓ "+_("Unknown event `{event}` by [{author}]({author_url}).").format(event=action, author=author, author_url=author_url)
-		else:
+		if "support" in settings:
 			content = "❓ "+_("Unknown event `{event}` by [{author}]({author_url}), report it on the [support server](<{support}>).").format(event=action, author=author, author_url=author_url, support=settings["support"])
+		else:
+			content = "❓ "+_("Unknown event `{event}` by [{author}]({author_url}).").format(event=action, author=author, author_url=author_url)
+			
 	await send_to_discord(DiscordMessage("compact", action, message_target[1], content=content, wiki=WIKI_SCRIPT_PATH))
 
 
@@ -777,7 +778,7 @@ async def embed_formatter(action, change, parsed_comment, categories, recent_cha
 		link = create_article_path("Special:RecentChanges", WIKI_ARTICLE_PATH)
 		embed["title"] = _("Unknown event `{event}`").format(event=action)
 		embed["color"] = 0
-		if settings["support"]:
+		if "support" in settings:
 			change_params = "[```json\n{params}\n```]({support})".format(params=json.dumps(change, indent=2), support=settings["support"])
 			if len(change_params) > 1000:
 				embed.add_field(_("Report this on the support server"), settings["support"])
