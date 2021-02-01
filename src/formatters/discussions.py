@@ -80,9 +80,9 @@ async def feeds_compact_formatter(post_type, post, message_target, wiki, article
 	if post_type == "FORUM" or post_type == "WALL" or post_type == "ARTICLE_COMMENT":
 		if post.get("jsonModel") is not None:
 			npost = DiscussionsFromHellParser(post, wiki)
-			message += ": \"{content}\"".format(content=npost.parse())
+			message += ": \"{content}\"".format(content=npost.parse().strip())
 		else:  # Fallback when model is not available
-			message += ": \"{content}\"".format(content=post.get("rawContent", ""))
+			message += ": \"{content}\"".format(content=post.get("rawContent", "").strip())
 
 	return DiscordMessage("compact", event_type, message_target[1], content=message, wiki=wiki)
 

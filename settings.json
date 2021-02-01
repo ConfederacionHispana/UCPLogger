@@ -111,12 +111,12 @@
         "move/move": {
             "icon": "https://i.imgur.com/eXz9dog.png",
             "color": 25600,
-            "emoji": "📨"
+            "emoji": "➡️"
         },
         "move/move_redir": {
             "icon": "https://i.imgur.com/UtC3YX2.png",
             "color": 25600,
-            "emoji": "📨"
+            "emoji": "➡️"
         },
         "block/block": {
             "icon": "https://i.imgur.com/g7KgZHf.png",
