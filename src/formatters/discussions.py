@@ -187,7 +187,7 @@ async def feeds_embed_formatter(post_type, post, message_target, wiki, article_p
 		logger.warning("No entry for {event} with params: {params}".format(event=post_type, params=post))
 		embed["title"] = _("Unknown event `{event}`").format(event=post_type)
 		embed.event_type = "unknown"
-		if settings["support"]:
+		if "support" in settings:
 			change_params = "[```json\n{params}\n```]({support})".format(params=json.dumps(post, indent=2), support=settings["support"])
 			if len(change_params) > 1000:
 				embed.add_field(_("Report this on the support server"), settings["support"])
