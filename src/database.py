@@ -1,6 +1,15 @@
-import sqlite3
 from src.config import settings
+from urllib.parse import urlparse
+import pymysql
+import os
 
-db_connection = sqlite3.connect(settings.get("database_path", 'rcgcdb.db'))
-db_connection.row_factory = sqlite3.Row
-db_cursor = db_connection.cursor()
+db_conf = urlparse(os.environ['DATABASE_URL'])
+
+db_connection = pymysql.connect(
+    host=db_conf.hostname,
+    user=db_conf.username,
+    password=db_conf.password,
+    db=db_conf.path[1:]
+)
+
+db_cursor = db_connection.cursor(pymysql.cursors.DictCursor)

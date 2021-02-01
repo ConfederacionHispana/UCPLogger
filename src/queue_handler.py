@@ -7,6 +7,7 @@ logger = logging.getLogger("rcgcdb.queue_handler")
 class UpdateDB:
 	def __init__(self):
 		self.updated = []
+		self.last_updated = ()
 
 	def add(self, wiki, rc_id, feeds=None):
 		self.updated.append((wiki, rc_id, feeds))
@@ -15,13 +16,20 @@ class UpdateDB:
 		self.updated.clear()
 
 	def update_db(self):
+		updated_wikis = 0
 		for update in self.updated:
-			if update[2] is None:
-				sql = "UPDATE rcgcdw SET rcid = ? WHERE wiki = ? AND ( rcid != -1 OR rcid IS NULL )"
+			if (update == self.last_updated):
+				pass
 			else:
-				sql = "UPDATE rcgcdw SET postid = ? WHERE wiki = ? AND ( postid != '-1' OR postid IS NULL )"
-			db_cursor.execute(sql, (update[1], update[0],))
-		db_connection.commit()
+				if update[2] is None:
+					sql = "UPDATE wikis SET rcid = %s WHERE wiki_url = %s AND ( rcid != -1 OR rcid IS NULL )"
+				else:
+					sql = "UPDATE wikis SET postid = %s WHERE wiki_url = %s"
+				db_cursor.execute(sql, (update[1], update[0],))
+				self.last_updated = update
+				updated_wikis += 1
+			if (updated_wikis >= 1):
+				db_connection.commit()
 		self.clear_list()
 
 

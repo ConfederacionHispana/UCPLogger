@@ -195,7 +195,7 @@ async def essential_info(change: dict, changed_categories, local_wiki: Wiki, tar
 	_ = langs[target[0][0]]["wiki"].gettext
 	changed_categories = changed_categories.get(change["revid"], None)
 	logger.debug("List of categories in essential_info: {}".format(changed_categories))
-	appearance_mode = embed_formatter if target[0][1] > 0 else compact_formatter
+	appearance_mode = embed_formatter if target[0][1] == 1 else compact_formatter
 	if "actionhidden" in change or "suppressed" in change:  # if event is hidden using suppression
 		await appearance_mode("suppressed", change, "", changed_categories, local_wiki, target, paths, rate_limiter)
 		return
@@ -226,11 +226,11 @@ async def essential_info(change: dict, changed_categories, local_wiki: Wiki, tar
 
 async def essential_feeds(change: dict, comment_pages: dict, db_wiki: sqlite3.Row, target: tuple) -> src.discord.DiscordMessage:
 	"""Prepares essential information for both embed and compact message format."""
-	appearance_mode = feeds_embed_formatter if target[0][1] > 0 else feeds_compact_formatter
+	appearance_mode = feeds_embed_formatter if target[0][1] == 1 else feeds_compact_formatter
 	identification_string = change["_embedded"]["thread"][0]["containerType"]
 	comment_page = None
 	if identification_string == "ARTICLE_COMMENT" and comment_pages is not None:
 		comment_page = comment_pages.get(change["forumId"], None)
 		if comment_page is not None:
-			comment_page["fullUrl"] = "/".join(db_wiki["wiki"].split("/", 3)[:3]) + comment_page["relativeUrl"]
-	return await appearance_mode(identification_string, change, target, db_wiki["wiki"], article_page=comment_page)
+			comment_page["fullUrl"] = "/".join(db_wiki["wiki_url"].split("/", 3)[:3]) + comment_page["relativeUrl"]
+	return await appearance_mode(identification_string, change, target, db_wiki["wiki_url"], article_page=comment_page)

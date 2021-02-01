@@ -1,3 +1,4 @@
+import os
 import aiohttp
 import asyncio
 import logging.config
@@ -37,9 +38,10 @@ main_tasks: dict = {}
 # Reasons for this: 1. we require amount of wikis to calculate the cooldown between requests
 # 2. Easier to code
 
-for db_wiki in db_cursor.execute('SELECT wiki, rcid FROM rcgcdw GROUP BY wiki ORDER BY ROWID'):
-	all_wikis[db_wiki["wiki"]] = Wiki()  # populate all_wikis
-	all_wikis[db_wiki["wiki"]].rc_active = db_wiki["rcid"]
+db_cursor.execute('SELECT id, wiki_url, rcid FROM `wikis` ORDER BY id')
+for db_wiki in db_cursor.fetchall():
+	all_wikis[db_wiki["wiki_url"]] = Wiki()  # populate all_wikis
+	all_wikis[db_wiki["wiki_url"]].rc_active = db_wiki["rcid"]
 
 queue_limit = settings.get("queue_limit", 30)
 QueuedWiki = namedtuple("QueuedWiki", ['url', 'amount'])
@@ -64,7 +66,7 @@ class RcQueue:
 	async def start_group(self, group, initial_wikis):
 		"""Starts a task for given domain group"""
 		if group not in self.domain_list:
-			self.domain_list[group] = {"task": asyncio.create_task(scan_group(group)), "last_rowid": 0, "query": LimitedList(initial_wikis), "rate_limiter": RateLimiter()}
+			self.domain_list[group] = {"task": asyncio.create_task(scan_group(group)), "last_id": 0, "query": LimitedList(initial_wikis), "rate_limiter": RateLimiter()}
 			logger.debug(self.domain_list[group])
 		else:
 			raise KeyError
@@ -84,10 +86,10 @@ class RcQueue:
 		del self.domain_list[group]
 
 	def check_if_domain_in_db(self, domain):
-		fetch_all = db_cursor.execute(
-			'SELECT ROWID, webhook, wiki, lang, display, rcid FROM rcgcdw WHERE rcid != -1 GROUP BY wiki ORDER BY ROWID ASC')
-		for wiki in fetch_all.fetchall():
-			if get_domain(db_wiki["wiki"]) == domain:
+		db_cursor.execute(
+			'SELECT id, wiki_url, webhook, lang, display, rcid FROM `wikis` WHERE rcid != -1 ORDER BY id ASC')
+		for wiki in db_cursor.fetchall():
+			if get_domain(db_wiki["wiki_url"]) == domain:
 				return True
 		return False
 
@@ -124,39 +126,39 @@ class RcQueue:
 	async def update_queues(self):
 		"""Makes a round on rcgcdb DB and looks for updates to the queues in self.domain_list"""
 		try:
-			fetch_all = db_cursor.execute(
-				'SELECT ROWID, webhook, wiki, lang, display, rcid FROM rcgcdw WHERE rcid != -1 OR rcid IS NULL GROUP BY wiki ORDER BY ROWID ASC')
+			db_cursor.execute(
+				'SELECT id, wiki_url, webhook, lang, display, rcid FROM `wikis` WHERE rcid != -1 OR rcid IS NULL ORDER BY id ASC')
 			self.to_remove = [x[0] for x in filter(self.filter_rc_active, all_wikis.items())]  # first populate this list and remove wikis that are still in the db, clean up the rest
 			full = set()
-			for db_wiki in fetch_all.fetchall():
-				domain = get_domain(db_wiki["wiki"])
+			for db_wiki in db_cursor.fetchall():
+				domain = get_domain(db_wiki["wiki_url"])
 				try:
-					if db_wiki["wiki"] not in all_wikis:
+					if db_wiki["wiki_url"] not in all_wikis:
 						raise AssertionError
-					self.to_remove.remove(db_wiki["wiki"])
+					self.to_remove.remove(db_wiki["wiki_url"])
 				except AssertionError:
-					all_wikis[db_wiki["wiki"]] = Wiki()
-					all_wikis[db_wiki["wiki"]].rc_active = db_wiki["rcid"]
+					all_wikis[db_wiki["wiki_url"]] = Wiki()
+					all_wikis[db_wiki["wiki_url"]].rc_active = db_wiki["rcid"]
 				except ValueError:
 					pass
 				if domain in full:
 					continue
 				try:
 					current_domain: dict = self[domain]
-					if not db_wiki["ROWID"] < current_domain["last_rowid"]:
-						current_domain["query"].append(QueuedWiki(db_wiki["wiki"], 20))
+					if not db_wiki["id"] < current_domain["last_id"]:
+						current_domain["query"].append(QueuedWiki(db_wiki["wiki_url"], 20))
 				except KeyError:
-					await self.start_group(domain, [QueuedWiki(db_wiki["wiki"], 20)])
+					await self.start_group(domain, [QueuedWiki(db_wiki["wiki_url"], 20)])
 					logger.info("A new domain group ({}) has been added since last time, adding it to the domain_list and starting a task...".format(domain))
 				except ListFull:
 					full.add(domain)
-					current_domain["last_rowid"] = db_wiki["ROWID"]
+					current_domain["last_id"] = db_wiki["id"]
 					continue
 			for wiki in self.to_remove:
 				await self.remove_wiki_from_group(wiki)
 			for group, data in self.domain_list.items():
 				if group not in full:
-					self[group]["last_rowid"] = 0  # iter reached the end without being stuck on full list
+					self[group]["last_id"] = 0  # iter reached the end without being stuck on full list
 			logger.debug("Current domain_list structure: {}".format(self.domain_list))
 		except:
 			if command_line_args.debug:
@@ -197,7 +199,8 @@ def generate_targets(wiki_url: str, additional_requirements: str) -> defaultdict
 	request to the wiki just to duplicate the message.
 	"""
 	combinations = defaultdict(list)
-	for webhook in db_cursor.execute('SELECT webhook, lang, display FROM rcgcdw WHERE wiki = ? {}'.format(additional_requirements), (wiki_url,)):
+	db_cursor.execute('SELECT webhook, lang, display FROM `wikis` WHERE wiki_url = %s {}'.format(additional_requirements), (wiki_url,))
+	for webhook in db_cursor.fetchall():
 		combination = (webhook["lang"], webhook["display"])
 		combinations[combination].append(webhook["webhook"])
 	return combinations
@@ -206,9 +209,9 @@ def generate_targets(wiki_url: str, additional_requirements: str) -> defaultdict
 async def generate_domain_groups():
 	"""Generate a list of wikis per domain (fandom.com, wikipedia.org etc.)"""
 	domain_wikis = defaultdict(list)
-	fetch_all = db_cursor.execute('SELECT ROWID, webhook, wiki, lang, display, rcid FROM rcgcdw WHERE rcid != -1 OR rcid IS NULL GROUP BY wiki ORDER BY ROWID ASC')
-	for db_wiki in fetch_all.fetchall():
-		domain_wikis[get_domain(db_wiki["wiki"])].append(QueuedWiki(db_wiki["wiki"], 20))
+	db_cursor.execute('SELECT id, wiki_url, webhook, lang, display, rcid FROM `wikis` WHERE rcid != -1 OR rcid IS NULL ORDER BY id ASC')
+	for db_wiki in db_cursor.fetchall():
+		domain_wikis[get_domain(db_wiki["wiki_url"])].append(QueuedWiki(db_wiki["wiki_url"], 20))
 	for group, db_wikis in domain_wikis.items():
 		yield group, db_wikis
 
@@ -356,20 +359,20 @@ async def message_sender():
 async def discussion_handler():
 	try:
 		while True:
-			fetch_all = db_cursor.execute(
-				"SELECT wiki, rcid, postid FROM rcgcdw WHERE postid != '-1' OR postid IS NULL GROUP BY wiki")
-			for db_wiki in fetch_all.fetchall():
+			db_cursor.execute(
+				"SELECT wiki_url, rcid, postid FROM `wikis` WHERE postid > -1")
+			for db_wiki in db_cursor.fetchall():
 				header = settings["header"]
 				header["Accept"] = "application/hal+json"
 				async with aiohttp.ClientSession(headers=header,
 				                                 timeout=aiohttp.ClientTimeout(6.0)) as session:
 					try:
-						local_wiki = all_wikis[db_wiki["wiki"]]  # set a reference to a wiki object from memory
+						local_wiki = all_wikis[db_wiki["wiki_url"]]  # set a reference to a wiki object from memory
 					except KeyError:
-						local_wiki = all_wikis[db_wiki["wiki"]] = Wiki()
+						local_wiki = all_wikis[db_wiki["wiki_url"]] = Wiki()
 						local_wiki.rc_active = db_wiki["rcid"]
 					try:
-						feeds_response = await local_wiki.fetch_feeds(db_wiki["wiki"], session)
+						feeds_response = await local_wiki.fetch_feeds(db_wiki["wiki_url"], session)
 					except (WikiServerError, WikiError):
 						continue  # ignore this wiki if it throws errors
 					try:
@@ -378,10 +381,10 @@ async def discussion_handler():
 							error = discussion_feed_resp["error"]
 							if error == "NotFoundException":  # Discussions disabled
 								if db_wiki["rcid"] != -1:  # RC feed is disabled
-									db_cursor.execute("UPDATE rcgcdw SET postid = ? WHERE wiki = ?",
-									                  ("-1", db_wiki["wiki"],))
+									db_cursor.execute("UPDATE `wikis` SET postid = %s WHERE wiki_url = %s",
+									                  (-1, db_wiki["wiki_url"],))
 								else:
-									await local_wiki.remove(db_wiki["wiki"], 1000)
+									await local_wiki.remove(db_wiki["wiki_url"], 1000)
 								DBHandler.update_db()
 								continue
 							raise WikiError
@@ -398,22 +401,22 @@ async def discussion_handler():
 						continue
 				if db_wiki["postid"] is None:  # new wiki, just get the last post to not spam the channel
 					if len(discussion_feed) > 0:
-						DBHandler.add(db_wiki["wiki"], discussion_feed[-1]["id"], True)
+						DBHandler.add(db_wiki["wiki_url"], int(discussion_feed[-1]["id"]), True)
 					else:
-						DBHandler.add(db_wiki["wiki"], "0", True)
+						DBHandler.add(db_wiki["wiki_url"], 0, True)
 					DBHandler.update_db()
 					continue
 				comment_events = []
-				targets = generate_targets(db_wiki["wiki"], "AND NOT postid = '-1'")
+				targets = generate_targets(db_wiki["wiki_url"], "AND NOT postid = -1")
 				for post in discussion_feed:
-					if post["_embedded"]["thread"][0]["containerType"] == "ARTICLE_COMMENT" and post["id"] > db_wiki["postid"]:
+					if post["_embedded"]["thread"][0]["containerType"] == "ARTICLE_COMMENT" and int(post["id"]) > db_wiki["postid"]:
 						comment_events.append(post["forumId"])
 				comment_pages: dict = {}
 				if comment_events:
 					try:
 						comment_pages = await local_wiki.safe_request(
 							"{wiki}wikia.php?controller=FeedsAndPosts&method=getArticleNamesAndUsernames&stablePageIds={pages}&format=json".format(
-								wiki=db_wiki["wiki"], pages=",".join(comment_events)
+								wiki=db_wiki["wiki_url"], pages=",".join(comment_events)
 							), RateLimiter(), "articleNames")
 					except aiohttp.ClientResponseError:  # Fandom can be funny sometimes... See #30
 						comment_pages = None
@@ -425,10 +428,10 @@ async def discussion_handler():
 							logger.exception("Exception on Feeds article comment request")
 							await generic_msg_sender_exception_logger(traceback.format_exc(),
 							                                          "Exception on Feeds article comment request",
-							                                          Post=str(post)[0:1000], Wiki=db_wiki["wiki"])
+							                                          Post=str(post)[0:1000], Wiki=db_wiki["wiki_url"])
 				message_list = defaultdict(list)
 				for post in discussion_feed:  # Yeah, second loop since the comments require an extra request
-					if post["id"] > db_wiki["postid"]:
+					if int(post["id"]) > db_wiki["postid"]:
 						for target in targets.items():
 							try:
 								message = await essential_feeds(post, comment_pages, db_wiki, target)
@@ -442,14 +445,14 @@ async def discussion_handler():
 									shutdown(loop=asyncio.get_event_loop())
 								else:
 									logger.exception("Exception on Feeds formatter")
-									await generic_msg_sender_exception_logger(traceback.format_exc(), "Exception in feed formatter", Post=str(post)[0:1000], Wiki=db_wiki["wiki"])
+									await generic_msg_sender_exception_logger(traceback.format_exc(), "Exception in feed formatter", Post=str(post)[0:1000], Wiki=db_wiki["wiki_url"])
 				# Lets stack the messages
 				for messages in message_list.values():
 					messages = stack_message_list(messages)
 					for message in messages:
 						await send_to_discord(message)
 				if discussion_feed:
-					DBHandler.add(db_wiki["wiki"], post["id"], True)
+					DBHandler.add(db_wiki["wiki_url"], int(post["id"]), True)
 				await asyncio.sleep(delay=2.0)  # hardcoded really doesn't need much more
 			await asyncio.sleep(delay=1.0) # Avoid lock on no wikis
 			DBHandler.update_db()
@@ -460,7 +463,7 @@ async def discussion_handler():
 			raise  # reraise the issue
 		else:
 			logger.exception("Exception on Feeds formatter")
-			await generic_msg_sender_exception_logger(traceback.format_exc(), "Discussion handler task exception", Wiki=db_wiki["wiki"])
+			await generic_msg_sender_exception_logger(traceback.format_exc(), "Discussion handler task exception", Wiki=db_wiki["wiki_url"])
 
 
 
@@ -490,7 +493,7 @@ def shutdown(loop, signal=None):
 # 	msg = context.get("exception", context["message"])
 # 	logger.error("Global exception handler: {}".format(msg))
 # 	if command_line_args.debug is False:
-# 		requests.post("https://discord.com/api/webhooks/"+settings["monitoring_webhook"], data=repr(DiscordMessage("compact", "monitoring", [settings["monitoring_webhook"]], wiki=None, content="[RcGcDb] Global exception handler: {}".format(msg))), headers={'Content-Type': 'application/json'})
+# 		requests.post("https://discord.com/api/webhooks/"+ os.environ['MONITORING_WEBHOOK'], data=repr(DiscordMessage("compact", "monitoring", [os.environ['MONITORING_WEBHOOK']], wiki=None, content="[RcGcDb] Global exception handler: {}".format(msg))), headers={'Content-Type': 'application/json'})
 # 	else:
 # 		shutdown(loop)
 

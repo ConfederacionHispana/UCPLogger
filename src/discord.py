@@ -1,4 +1,4 @@
-import json, random, math, logging
+import os, json, random, math, logging
 from collections import defaultdict
 
 from src.misc import logger
@@ -202,7 +202,7 @@ async def send_to_discord_webhook_monitoring(data: DiscordMessage):
 	header['Content-Type'] = 'application/json'
 	async with aiohttp.ClientSession(headers=header, timeout=aiohttp.ClientTimeout(5.0)) as session:
 		try:
-			result = await session.post("https://discord.com/api/webhooks/"+settings["monitoring_webhook"], data=repr(data))
+			result = await session.post("https://discord.com/api/webhooks/" + os.environ['MONITORING_WEBHOOK'], data=repr(data))
 		except (aiohttp.ClientConnectionError, aiohttp.ServerConnectionError):
 			logger.exception("Could not send the message to Discord")
 			return 3
