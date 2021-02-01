@@ -1,3 +1,4 @@
+name: Fetch from upstream
 on:
   workflow_dispatch:
 
