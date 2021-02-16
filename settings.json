@@ -65,42 +65,42 @@
         },
         "upload/overwrite": {
             "icon": "https://i.imgur.com/egJpa81.png",
-            "color": 12390624,
+            "color": 9222564,
             "emoji": "🖼️"
         },
         "upload/upload": {
             "icon": "https://i.imgur.com/egJpa81.png",
-            "color": 12390624,
+            "color": 9222564,
             "emoji": "🖼️"
         },
         "upload/revert": {
             "icon": "https://i.imgur.com/egJpa81.png",
-            "color": 12390624,
+            "color": 9222564,
             "emoji": "⏮️"
         },
         "delete/delete": {
             "icon": "https://i.imgur.com/BU77GD3.png",
-            "color": 1,
+            "color": 16711680,
             "emoji": "🗑️"
         },
         "delete/delete_redir": {
             "icon": "https://i.imgur.com/BU77GD3.png",
-            "color": 1,
+            "color": 16711680,
             "emoji": "🗑️"
         },
         "delete/restore": {
             "icon": "https://i.imgur.com/9MnROIU.png",
-            "color": 1,
+            "color": 16711680,
             "emoji": "♻️"
         },
         "delete/revision": {
             "icon": "https://i.imgur.com/1gps6EZ.png",
-            "color": 1,
+            "color": 16711680,
             "emoji": "👁️"
         },
         "delete/event": {
             "icon": "https://i.imgur.com/1gps6EZ.png",
-            "color": 1,
+            "color": 16711680,
             "emoji": "👁️"
         },
         "merge/merge": {
@@ -110,47 +110,47 @@
         },
         "move/move": {
             "icon": "https://i.imgur.com/eXz9dog.png",
-            "color": 25600,
+            "color": 14343167,
             "emoji": "➡️"
         },
         "move/move_redir": {
             "icon": "https://i.imgur.com/UtC3YX2.png",
-            "color": 25600,
+            "color": 14343167,
             "emoji": "➡️"
         },
         "block/block": {
             "icon": "https://i.imgur.com/g7KgZHf.png",
-            "color": 1,
+            "color": 16711680,
             "emoji": "🚫"
         },
         "block/unblock": {
             "icon": "https://i.imgur.com/bvtBJ8o.png",
-            "color": 1,
+            "color": 16711680,
             "emoji": "✅"
         },
         "block/reblock": {
             "icon": "https://i.imgur.com/g7KgZHf.png",
-            "color": 1,
+            "color": 16711680,
             "emoji": "🚫"
         },
         "protect/protect": {
             "icon": "https://i.imgur.com/bzPt89Z.png",
-            "color": 16312092,
+            "color": 10173893,
             "emoji": "🔒"
         },
         "protect/modify": {
             "icon": "https://i.imgur.com/bzPt89Z.png",
-            "color": 16312092,
+            "color": 10173893,
             "emoji": "🔐"
         },
         "protect/move_prot": {
             "icon": "https://i.imgur.com/bzPt89Z.png",
-            "color": 16312092,
+            "color": 10173893,
             "emoji": "🔏"
         },
         "protect/unprotect": {
             "icon": "https://i.imgur.com/2wN3Qcq.png",
-            "color": 16312092,
+            "color": 10173893,
             "emoji": "🔓"
         },
         "import/upload": {
@@ -165,12 +165,12 @@
         },
         "rights/rights": {
             "icon": "",
-            "color": 16711680,
+            "color": 4835957,
             "emoji": "🏅"
         },
         "rights/autopromote": {
             "icon": "",
-            "color": 16711680,
+            "color": 4835957,
             "emoji": "🏅"
         },
         "abusefilter/modify": {
@@ -295,27 +295,27 @@
         },
         "newusers/autocreate": {
             "icon": "",
-            "color": 65280,
+            "color": 14990525,
             "emoji": "🗿"
         },
         "newusers/byemail": {
             "icon": "",
-            "color": 65280,
+            "color": 14990525,
             "emoji": "🗿"
         },
         "newusers/create": {
             "icon": "",
-            "color": 65280,
+            "color": 14990525,
             "emoji": "🗿"
         },
         "newusers/create2": {
             "icon": "",
-            "color": 65280,
+            "color": 14990525,
             "emoji": "🗿"
         },
         "newusers/newusers": {
             "icon": "",
-            "color": 65280,
+            "color": 14990525,
             "emoji": "🗿"
         },
         "managewiki/delete": {
@@ -450,7 +450,7 @@
         },
         "renameuser/renameuser": {
             "icon": "",
-            "color": 8421504,
+            "color": 16725894,
             "emoji": "📛"
         },
         "suppressed": {
@@ -460,47 +460,47 @@
         },
         "discussion": {
             "icon": "https://static.wikia.nocookie.net/663e53f7-1e79-4906-95a7-2c1df4ebbada",
-            "color": 54998,
+            "color": 16766100,
             "emoji": "📝"
         },
         "discussion/forum/post": {
             "icon": "https://static.wikia.nocookie.net/663e53f7-1e79-4906-95a7-2c1df4ebbada",
-            "color": 54998,
+            "color": 16766100,
             "emoji": "📝"
         },
         "discussion/forum/reply": {
             "icon": "https://static.wikia.nocookie.net/663e53f7-1e79-4906-95a7-2c1df4ebbada",
-            "color": 54998,
+            "color": 16766100,
             "emoji": "📝"
         },
         "discussion/forum/poll": {
             "icon": "https://static.wikia.nocookie.net/663e53f7-1e79-4906-95a7-2c1df4ebbada",
-            "color": 54998,
+            "color": 16766100,
             "emoji": "📝"
         },
         "discussion/forum/quiz": {
             "icon": "https://static.wikia.nocookie.net/663e53f7-1e79-4906-95a7-2c1df4ebbada",
-            "color": 54998,
+            "color": 16766100,
             "emoji": "📝"
         },
         "discussion/wall/post": {
             "icon": "https://static.wikia.nocookie.net/663e53f7-1e79-4906-95a7-2c1df4ebbada",
-            "color": 3752525,
+            "color": 16766100,
             "emoji": "✉️"
         },
         "discussion/wall/reply": {
             "icon": "https://static.wikia.nocookie.net/663e53f7-1e79-4906-95a7-2c1df4ebbada",
-            "color": 3752525,
+            "color": 16766100,
             "emoji": "📩"
         },
         "discussion/comment/post": {
             "icon": "https://static.wikia.nocookie.net/663e53f7-1e79-4906-95a7-2c1df4ebbada",
-            "color": 10802,
+            "color": 16766100,
             "emoji": "🗒️"
         },
         "discussion/comment/reply": {
             "icon": "https://static.wikia.nocookie.net/663e53f7-1e79-4906-95a7-2c1df4ebbada",
-            "color": 10802,
+            "color": 16766100,
             "emoji": "🗒️"
         },
         "unknown": {
@@ -509,14 +509,14 @@
             "emoji": "❓"
         },
         "webhook/remove": {
-            "icon": "https://raw.githubusercontent.com/Markus-Rost/discord-wiki-bot/master/dashboard/src/icon.png",
+            "icon": "",
             "color": 0,
-            "emoji": "<:wikibot:588723255972593672>"
+            "emoji": "❓"
         },
         "bot/exception": {
-            "icon": "https://raw.githubusercontent.com/Markus-Rost/discord-wiki-bot/master/dashboard/src/icon.png",
+            "icon": "",
             "color": 0,
-            "emoji": "<:wikibot:588723255972593672>"
+            "emoji": "❓"
         }
     }
 }
