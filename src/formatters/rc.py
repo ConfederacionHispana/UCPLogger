@@ -38,9 +38,8 @@ async def compact_formatter(action, change, parsed_comment, categories, recent_c
 		author = change["user"]
 	parsed_comment = "" if parsed_comment is None else " *("+parsed_comment+")*"
 	if action in ["edit", "new"]:
-		edit_link = link_formatter("{wiki}index.php?title={article}&curid={pageid}&diff={diff}&oldid={oldrev}".format(
-			wiki=WIKI_SCRIPT_PATH, pageid=change["pageid"], diff=change["revid"], oldrev=change["old_revid"],
-			article=change["title"]))
+		edit_link = link_formatter("{wiki}?diff={diff}".format(
+			wiki=WIKI_SCRIPT_PATH, diff=change["revid"]))
 		edit_size = change["newlen"] - change["oldlen"]
 		sign = ""
 		if edit_size > 0:
@@ -1118,7 +1117,7 @@ async def embed_formatter(action, change, parsed_comment, categories, recent_cha
 		link = create_article_path("Special:RecentChanges", WIKI_ARTICLE_PATH)
 		embed["title"] = _("Unknown event `{event}`").format(event=action)
 		embed.event_type = "unknown"
-		if settings.get("support", None):
+		if "support" in settings:
 			change_params = "[```json\n{params}\n```]({support})".format(params=json.dumps(change, indent=2), support=settings["support"])
 			if len(change_params) > 1000:
 				embed.add_field(_("Report this on the support server"), settings["support"])
