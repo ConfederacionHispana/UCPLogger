@@ -9,7 +9,7 @@ db_connection = pymysql.connect(
     host=db_conf.hostname,
     user=db_conf.username,
     password=db_conf.password,
-    db=db_conf.path[1:]
+    database=db_conf.path[1:]
 )
 
 db_cursor = db_connection.cursor(pymysql.cursors.DictCursor)

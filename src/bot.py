@@ -5,6 +5,7 @@ import logging.config
 import signal
 import traceback
 import nest_asyncio
+import time
 from collections import defaultdict, namedtuple
 from typing import Generator
 
@@ -19,6 +20,7 @@ from src.queue_handler import DBHandler
 from src.wiki import Wiki, process_cats, process_mwmsgs, essential_info, essential_feeds
 from src.discord import DiscordMessage, generic_msg_sender_exception_logger, stack_message_list
 from src.wiki_ratelimiter import RateLimiter
+from src.irc_feed import AioIRCCat
 
 
 logging.config.dictConfig(settings["logging"])
@@ -50,8 +52,8 @@ class LimitedList(list):
 	def __init__(self, *args):
 		list.__init__(self, *args)
 
-	def append(self, obj: QueuedWiki) -> None:
-		if len(self) < queue_limit:
+	def append(self, obj: QueuedWiki, forced: bool = False) -> None:
+		if len(self) < queue_limit or forced:
 			self.insert(len(self), obj)
 			return
 		raise ListFull
@@ -62,11 +64,24 @@ class RcQueue:
 	def __init__(self):
 		self.domain_list = {}
 		self.to_remove = []
+		self.irc_mapping = {}
 
 	async def start_group(self, group, initial_wikis):
 		"""Starts a task for given domain group"""
 		if group not in self.domain_list:
-			self.domain_list[group] = {"task": asyncio.create_task(scan_group(group)), "last_id": 0, "query": LimitedList(initial_wikis), "rate_limiter": RateLimiter()}
+			if group in self.irc_mapping:  # Hopefully there are no race conditions....
+				irc_connection = self.irc_mapping[group]
+			else:
+				for irc_server in settings["irc_servers"].keys():
+					if group in settings["irc_servers"][irc_server]["domains"]:
+						irc_connection = AioIRCCat(settings["irc_servers"][irc_server]["irc_channel_mapping"], all_wikis)
+						for domain in settings["irc_servers"][irc_server]["domains"]:
+							self.irc_mapping[domain] = irc_connection
+						irc_connection.connect(settings["irc_servers"][irc_server]["irc_host"], settings["irc_servers"][irc_server]["irc_port"], settings["irc_servers"][irc_server]["irc_name"])
+						break
+				else:
+					irc_connection = None
+			self.domain_list[group] = {"task": asyncio.create_task(scan_group(group)), "last_id": 0, "query": LimitedList(initial_wikis), "rate_limiter": RateLimiter(), "irc": irc_connection}
 			logger.debug(self.domain_list[group])
 		else:
 			raise KeyError
@@ -79,7 +94,10 @@ class RcQueue:
 		all_wikis[wiki].rc_active = -1
 		if not self[group]["query"]:  # if there is no wiki left in the queue, get rid of the task
 			logger.debug(f"{group} no longer has any wikis queued!")
-			await self.stop_task_group(group)
+			if not self.check_if_domain_in_db(group):
+				await self.stop_task_group(group)
+			else:
+				logger.debug(f"But there are still wikis for it in DB!")
 
 	async def stop_task_group(self, group):
 		self[group]["task"].cancel()
@@ -98,12 +116,13 @@ class RcQueue:
 		"""Retrives next wiki in the queue for given domain"""
 		if len(self.domain_list[group]["query"]) == 0:
 			# make sure we are not removing the group because entire domain group went down, it's expensive - yes, but could theoretically cause issues
-			if self.check_if_domain_in_db(group):
-				logger.warning("Domain group {} has 0 elements yet there are still wikis in the db of the same domain group! This may indicate we ran over the list too fast. We are waiting...".format(group))
-				raise QueueEmpty
-			else:
-				await self.stop_task_group(group)
-				return
+			raise QueueEmpty
+			# if self.check_if_domain_in_db(group):
+			# 	#logger.warning("Domain group {} has 0 elements yet there are still wikis in the db of the same domain group! This may indicate we ran over the list too fast. We are waiting...".format(group))
+			# 	raise QueueEmpty
+			# else:
+			# 	await self.stop_task_group(group)
+			# 	return
 		try:
 			yield self.domain_list[group]["query"][0]
 		except asyncio.CancelledError:
@@ -145,6 +164,22 @@ class RcQueue:
 					continue
 				try:
 					current_domain: dict = self[domain]
+					if current_domain["irc"]:
+						logger.debug("DOMAIN LIST FOR IRC: {}".format(current_domain["irc"].updated))
+						logger.debug("CURRENT DOMAIN INFO: {}".format(domain))
+						logger.debug("IS WIKI IN A LIST?: {}".format(db_wiki["wiki_url"] in current_domain["irc"].updated))
+						logger.debug("LAST CHECK FOR THE WIKI {} IS {}".format(db_wiki["wiki_url"], all_wikis[db_wiki["wiki_url"]].last_check))
+						if db_wiki["wiki"] in current_domain["irc"].updated:  # Priority wikis are the ones with IRC, if they get updated forcefully add them to queue
+							current_domain["irc"].updated.remove(db_wiki["wiki_url"])
+							current_domain["query"].append(QueuedWiki(db_wiki["wiki_url"], 20), forced=True)
+							logger.debug("Updated in IRC so adding to queue.")
+							continue
+						elif all_wikis[db_wiki["wiki_url"]].last_check+settings["irc_overtime"] < time.time():  # if time went by and wiki should be updated now use default mechanics
+							logger.debug("Overtime so adding to queue.")
+							pass
+						else:  # Continue without adding
+							logger.debug("No condition fulfilled so skipping.")
+							continue
 					if not db_wiki["id"] < current_domain["last_id"]:
 						current_domain["query"].append(QueuedWiki(db_wiki["wiki_url"], 20))
 				except KeyError:
@@ -221,7 +256,8 @@ async def scan_group(group: str):
 	while True:
 		try:
 			async with rcqueue.retrieve_next_queued(group) as queued_wiki:  # acquire next wiki in queue
-				await asyncio.sleep(calculate_delay_for_group(len(rcqueue[group]["query"])))
+				if "irc" not in rcqueue[group]:
+					await asyncio.sleep(calculate_delay_for_group(len(rcqueue[group]["query"])))
 				logger.debug("Wiki {}".format(queued_wiki.url))
 				local_wiki = all_wikis[queued_wiki.url]  # set a reference to a wiki object from memory
 				extended = False
@@ -274,6 +310,7 @@ async def scan_group(group: str):
 				targets = generate_targets(queued_wiki.url, "AND (rcid != -1 OR rcid IS NULL)")
 				paths = get_paths(queued_wiki.url, recent_changes_resp)
 				new_events = 0
+				local_wiki.last_check = time.time()  # on successful check, save new last check time
 				for change in recent_changes:
 					if change["rcid"] > local_wiki.rc_active and queued_wiki.amount != 450:
 						new_events += 1
@@ -317,7 +354,7 @@ async def scan_group(group: str):
 		except asyncio.CancelledError:
 			return
 		except QueueEmpty:
-			await asyncio.sleep(21.0)
+			await asyncio.sleep(10.0)
 			continue
 
 
@@ -362,17 +399,24 @@ async def discussion_handler():
 			db_cursor.execute(
 				"SELECT wiki_url, rcid, postid FROM `wikis` WHERE postid > -1")
 			for db_wiki in db_cursor.fetchall():
+				try:
+					local_wiki = all_wikis[db_wiki["wiki_url"]]  # set a reference to a wiki object from memory
+				except KeyError:
+					local_wiki = all_wikis[db_wiki["wiki_url"]] = Wiki()
+					local_wiki.rc_active = db_wiki["rcid"]
+				if "fandom.com" not in rcqueue.irc_mapping or (db_wiki["wiki_url"] not in rcqueue.irc_mapping["fandom.com"].updated_discussions and local_wiki.last_discussion_check+settings["irc_overtime"] > time.time()):  # I swear if another wiki farm ever starts using Fandom discussions I'm gonna use explosion magic
+					continue
+				else:
+					try:
+						rcqueue.irc_mapping["fandom.com"].updated_discussions.remove(db_wiki["wiki_url"])
+					except KeyError:
+						pass  # to be expected
 				header = settings["header"]
 				header["Accept"] = "application/hal+json"
 				async with aiohttp.ClientSession(headers=header,
 				                                 timeout=aiohttp.ClientTimeout(6.0)) as session:
 					try:
-						local_wiki = all_wikis[db_wiki["wiki_url"]]  # set a reference to a wiki object from memory
-					except KeyError:
-						local_wiki = all_wikis[db_wiki["wiki_url"]] = Wiki()
-						local_wiki.rc_active = db_wiki["rcid"]
-					try:
-						feeds_response = await local_wiki.fetch_feeds(db_wiki["wiki_url"], session)
+						feeds_response = await local_wiki.fetch_feeds(db_wiki["wiki"], session)
 					except (WikiServerError, WikiError):
 						continue  # ignore this wiki if it throws errors
 					try:
