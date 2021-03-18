@@ -81,7 +81,7 @@ class RcQueue:
 						break
 				else:
 					irc_connection = None
-			self.domain_list[group] = {"task": asyncio.create_task(scan_group(group)), "last_rowid": 0, "query": LimitedList(initial_wikis), "rate_limiter": RateLimiter(), "irc": irc_connection}
+			self.domain_list[group] = {"task": asyncio.create_task(scan_group(group)), "last_id": 0, "query": LimitedList(initial_wikis), "rate_limiter": RateLimiter(), "irc": irc_connection}
 			logger.debug(self.domain_list[group])
 		else:
 			raise KeyError
@@ -404,7 +404,7 @@ async def discussion_handler():
 				except KeyError:
 					local_wiki = all_wikis[db_wiki["wiki_url"]] = Wiki()
 					local_wiki.rc_active = db_wiki["rcid"]
-				if db_wiki["wiki_url"] not in rcqueue.irc_mapping["fandom.com"].updated_discussions and local_wiki.last_discussion_check+settings["irc_overtime"] > time.time():  # I swear if another wiki farm ever starts using Fandom discussions I'm gonna use explosion magic
+				if "fandom.com" not in rcqueue.irc_mapping or (db_wiki["wiki_url"] not in rcqueue.irc_mapping["fandom.com"].updated_discussions and local_wiki.last_discussion_check+settings["irc_overtime"] > time.time()):  # I swear if another wiki farm ever starts using Fandom discussions I'm gonna use explosion magic
 					continue
 				else:
 					try:
