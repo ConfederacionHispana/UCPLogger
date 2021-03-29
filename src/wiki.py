@@ -24,8 +24,6 @@ class Wiki:
 	fail_times: int = 0  # corresponding to amount of times connection with wiki failed for client reasons (400-499)
 	session: aiohttp.ClientSession = None
 	rc_active: int = 0
-	last_check: float = 0.0
-	last_discussion_check: float = 0.0
 
 	@staticmethod
 	async def fetch_wiki(extended, script_path, session: aiohttp.ClientSession, ratelimiter: RateLimiter, amount=20) -> aiohttp.ClientResponse:
@@ -70,7 +68,7 @@ class Wiki:
 		await ratelimiter.timeout_wait()
 		try:
 			async with aiohttp.ClientSession(headers=settings["header"], timeout=aiohttp.ClientTimeout(6.0)) as session:
-				request = await session.get(url)
+				request = await session.get(url, allow_redirects=False)
 				ratelimiter.timeout_add(1.0)
 				request.raise_for_status()
 				json_request = await request.json(encoding="UTF-8")
@@ -145,10 +143,10 @@ async def process_cats(event: dict, local_wiki: Wiki, category_msgs: dict, categ
 				wiki_cat_mw_messages = category_msgs[local_wiki.mw_messages]
 				if wiki_cat_mw_messages[0][1] in comment_to_match or wiki_cat_mw_messages[2][1] in comment_to_match:  # Added to category
 					categorize_events[event["revid"]]["new"].add(cat_title)
-					#logger.debug("Matched {} to added category for {}".format(cat_title, event["revid"]))
+					logger.debug("Matched {} to added category for {}".format(cat_title, event["revid"]))
 				elif wiki_cat_mw_messages[1][1] in comment_to_match or wiki_cat_mw_messages[3][1] in comment_to_match:  # Removed from category
 					categorize_events[event["revid"]]["removed"].add(cat_title)
-					#logger.debug("Matched {} to removed category for {}".format(cat_title, event["revid"]))
+					logger.debug("Matched {} to removed category for {}".format(cat_title, event["revid"]))
 				else:
 					logger.debug(
 						"Unknown match for category change with messages {}, {}, {}, {} and comment_to_match {}".format(
@@ -190,15 +188,14 @@ async def process_mwmsgs(wiki_response: dict, local_wiki: Wiki, mw_msgs: dict):
 	mw_msgs[key] = msgs  # it may be a little bit messy for sure, however I don't expect any reason to remove mw_msgs entries by one
 	local_wiki.mw_messages = key
 
-
 # db_wiki: webhook, wiki, lang, display, rcid, postid
 async def essential_info(change: dict, changed_categories, local_wiki: Wiki, target: tuple, paths: tuple, request: dict,
                          rate_limiter: RateLimiter) -> src.discord.DiscordMessage:
 	"""Prepares essential information for both embed and compact message format."""
 	_ = langs[target[0][0]]["wiki"].gettext
 	changed_categories = changed_categories.get(change["revid"], None)
-	#logger.debug("List of categories in essential_info: {}".format(changed_categories))
-	appearance_mode = embed_formatter if target[0][1] > 0 else compact_formatter
+	logger.debug("List of categories in essential_info: {}".format(changed_categories))
+	appearance_mode = embed_formatter if target[0][1] == 1 else compact_formatter
 	if "actionhidden" in change or "suppressed" in change:  # if event is hidden using suppression
 		await appearance_mode("suppressed", change, "", changed_categories, local_wiki, target, paths, rate_limiter)
 		return

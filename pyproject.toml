@@ -7,13 +7,12 @@ license = "GPLv3"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-aiohttp = "^3.7.4"
+aiohttp = "^3.7.3"
 beautifulsoup4 = "^4.9.3"
 lxml = "^4.6.2"
-nest-asyncio = "^1.5.1"
+nest-asyncio = "^1.4.3"
 python-dotenv = "^0.15.0"
-PyMySQL = "^1.0.2"
-irc = "^19.0.1"
+PyMySQL = "^0.10.1"
 
 [tool.poetry.dev-dependencies]
 

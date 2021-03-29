@@ -4,17 +4,6 @@
     },
     "max_requests_per_minute": 60,
     "minimal_cooldown_per_wiki_in_sec": 10,
-    "irc_overtime": 3600,
-    "irc_servers": {
-        "your custom name for the farm": {
-            "domains": ["wikipedia.org", "otherwikipedia.org"],
-            "irc_host": "randomIRC.domain.com",
-            "irc_port": "6667",
-            "irc_nickname": "BotIRCNickname",
-            "irc_name": "BotIRCName",
-            "irc_channel_mapping": {"rc": "#rcchannel", "discussion": "#discussionchannel"}
-        }
-    },
     "logging": {
         "version": 1,
         "disable_existing_loggers": false,

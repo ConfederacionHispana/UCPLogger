@@ -138,17 +138,16 @@ def stack_message_list(messages: list) -> list:
 			# else:  # all messages in messages are stacked, exit this if
 			# 	i += 1
 			removed_msgs = 0
-			# We split messages into groups of 10
 			for group_index in range(ceil((len(messages)) / 10)):
-				message_group_index = group_index * 10 - removed_msgs  # this helps us with calculations which messages we need
-				stackable = StackedDiscordMessage(messages[message_group_index])  # treat the first message from the group as main
-				for message in messages[message_group_index + 1:message_group_index + 10]:  # we grab messages from messages list
+				message_group_index = group_index * 10 - removed_msgs
+				stackable = StackedDiscordMessage(messages[message_group_index])
+				for message in messages[message_group_index + 1:message_group_index + 10]:
 					try:
-						stackable.add_embed(message)  # and to our main message we add ones after it that are from same group
-					except EmbedListFull:  # if there are too many messages in our group we simply break so another group can be made
+						stackable.add_embed(message)
+					except EmbedListFull:
 						break
 					messages.remove(message)
-					removed_msgs += 1  # helps with calculating message_group_index
+					removed_msgs += 1
 				messages[message_group_index] = stackable
 		# elif messages[0].message_type() == "compact":
 		# 	message_index = 0
