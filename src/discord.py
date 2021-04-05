@@ -153,15 +153,15 @@ def stack_message_list(messages: list) -> list:
 					messages.remove(message)
 					removed_msgs += 1  # helps with calculating message_group_index
 				messages[message_group_index] = stackable
-		elif messages[0].message_type() == "compact":
-			message_index = 0
-			while len(messages) > message_index+1:  # as long as we have messages to stack
-				if (len(messages[message_index]) + len(messages[message_index+1])) < 2000:  # if overall length is lower than 2000
-					messages[message_index].webhook_object["content"] = messages[message_index].webhook_object["content"] + "\n" + messages[message_index + 1].webhook_object["content"]
-					messages[message_index].length += (len(messages[message_index + 1]) + 1)
-					messages.remove(messages[message_index + 1])
-				else:
-					message_index += 1
+		# elif messages[0].message_type() == "compact":
+		# 	message_index = 0
+		# 	while len(messages) > message_index+1:  # as long as we have messages to stack
+		# 		if (len(messages[message_index]) + len(messages[message_index+1])) < 2000:  # if overall length is lower than 2000
+		# 			messages[message_index].webhook_object["content"] = messages[message_index].webhook_object["content"] + "\n" + messages[message_index + 1].webhook_object["content"]
+		# 			messages[message_index].length += (len(messages[message_index + 1]) + 1)
+		# 			messages.remove(messages[message_index + 1])
+		# 		else:
+		# 			message_index += 1
 	return messages
 
 
