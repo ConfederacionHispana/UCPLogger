@@ -38,9 +38,12 @@ async def compact_formatter(action, change, parsed_comment, categories, recent_c
 		author = change["user"]
 	parsed_comment = "" if parsed_comment is None else " *("+parsed_comment+")*"
 	if action in ["edit", "new"]:
-		edit_link = link_formatter("{wiki}index.php?title={article}&curid={pageid}&diff={diff}&oldid={oldrev}".format(
-			wiki=WIKI_SCRIPT_PATH, pageid=change["pageid"], diff=change["revid"], oldrev=change["old_revid"],
-			article=change["title"]))
+		if action == "new":
+			edit_link = link_formatter("{wiki}{article}".format(
+				wiki=WIKI_SCRIPT_PATH, article=change["title"]))
+		else:
+			edit_link = link_formatter("{wiki}?diff={diff}".format(
+				wiki=WIKI_SCRIPT_PATH, diff=change["revid"]))
 		edit_size = change["newlen"] - change["oldlen"]
 		sign = ""
 		if edit_size > 0:
