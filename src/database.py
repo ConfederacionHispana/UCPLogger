@@ -4,7 +4,7 @@ from typing import Optional
 from urllib.parse import urlparse
 import os
 
-db_conf = urlparse(os.environ['DATABASE'])
+db_conf = urlparse(os.environ['DATABASE_URL'])
 
 logger = logging.getLogger("rcgcdb.database")
 # connection: Optional[asyncpg.Connection] = None
