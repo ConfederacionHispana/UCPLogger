@@ -1,0 +1,87 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the RcGcDb package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: RcGcDb\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-10-14 21:05+0200\n"
+"PO-Revision-Date: 2020-10-22 05:03-0300\n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 2.4.1\n"
+"Last-Translator: \n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Language: es\n"
+
+#: src/misc.py:96
+msgid "Location"
+msgstr "Ubicación"
+
+#: src/misc.py:96
+msgid "About me"
+msgstr "Sobre mí"
+
+#: src/misc.py:97
+msgid "Google link"
+msgstr "Página de Google"
+
+#: src/misc.py:97
+msgid "Facebook link"
+msgstr "Página de Facebook"
+
+#: src/misc.py:98
+msgid "Twitter link"
+msgstr "Twitter"
+
+#: src/misc.py:98
+msgid "Reddit link"
+msgstr "Enlace de Reddit"
+
+#: src/misc.py:99
+msgid "Twitch link"
+msgstr "Enlace de Twitch"
+
+#: src/misc.py:99
+msgid "PSN link"
+msgstr "Enlace de PSN"
+
+#: src/misc.py:100
+msgid "VK link"
+msgstr "VK"
+
+#: src/misc.py:100
+msgid "XBL link"
+msgstr "Enlace de XBL"
+
+#: src/misc.py:101
+msgid "Steam link"
+msgstr "Perfil de Steam"
+
+#: src/misc.py:101
+msgid "Discord handle"
+msgstr "Usuario de Discord"
+
+#: src/misc.py:102
+msgid "Battle.net handle"
+msgstr "Usuario de Battle.net"
+
+#: src/misc.py:108
+msgid "Unknown"
+msgstr "Desconocido"
+
+#: src/misc.py:110
+msgid "unknown"
+msgstr "desconocido"
+
+#: src/misc.py:121
+msgid ""
+"\n"
+"__And more__"
+msgstr ""
+"\n"
+"__Y más__"
