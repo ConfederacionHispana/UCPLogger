@@ -13,4 +13,6 @@ RUN pip3 install --disable-pip-version-check --no-cache-dir --no-warn-script-loc
 COPY --chown=app:app . .
 
 # Run app entrypoint
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 CMD ["python3", "start.py"]
