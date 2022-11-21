@@ -55,7 +55,7 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Save image tag for use in deploy job
         id: save_tag
-        run: echo "::set-output name=tag::1.0.0.${{ github.run_number }}"
+        run: echo "tag=1.0.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
   Deploy:
     name: Deploy image
     runs-on: ubuntu-latest
@@ -66,4 +66,4 @@ jobs:
         with:
           submodules: true
       - name: Deploy image to production server
-        run: docker run -t caprover/cli-caprover:2.2.3 caprover deploy --caproverUrl ${{ secrets.CAPROVER_URL }} --caproverPassword ${{ secrets.CAPROVER_PASSWORD }} --caproverApp ${{ secrets.CAPROVER_APP }} --imageName ghcr.io/confederacionhispana/confebot:${{ needs.Publish.outputs.deploy_tag }}
+        run: docker run -t caprover/cli-caprover:2.2.3 caprover deploy --caproverUrl ${{ secrets.CAPROVER_URL }} --caproverPassword ${{ secrets.CAPROVER_PASSWORD }} --caproverApp ${{ secrets.CAPROVER_APP }} --imageName ghcr.io/confederacionhispana/ucplogger:${{ needs.Publish.outputs.deploy_tag }}
