@@ -1,7 +1,10 @@
 import asyncpg
 import logging
 from typing import Optional
-from src.config import settings
+from urllib.parse import urlparse
+import os
+
+db_conf = urlparse(os.environ['DATABASE_URL'])
 
 logger = logging.getLogger("rcgcdb.database")
 # connection: Optional[asyncpg.Connection] = None
@@ -14,9 +17,9 @@ class db_connection:
         # Establish a connection to an existing database named "test"
         # as a "postgres" user.
         logger.debug("Setting up the Database connection...")
-        self.connection = await asyncpg.create_pool(user=settings["pg_user"], host=settings.get("pg_host", "localhost"),
-                                     database=settings.get("pg_db", "rcgcdb"), password=settings.get("pg_pass"),
-                                                    port=settings.get("pg_port", 5432))
+        self.connection = await asyncpg.create_pool(user=db_conf.username, host=db_conf.hostname,
+                                     database=db_conf.path[1:], password=db_conf.password,
+                                                    port=5432)
         logger.debug("Database connection established! Connection: {}".format(self.connection))
 
     async def shutdown_connection(self):

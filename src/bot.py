@@ -411,8 +411,8 @@ async def discussion_handler():
 						except KeyError:
 							local_wiki = all_wikis[db_wiki["wiki"]] = Wiki()
 							local_wiki.rc_active = db_wiki["rcid"]
-						if db_wiki["wiki"] not in rcqueue.irc_mapping["fandom.com"].updated_discussions and \
-								local_wiki.last_discussion_check+settings["irc_overtime"] > time.time():  # I swear if another wiki farm ever starts using Fandom discussions I'm gonna use explosion magic
+						if "fandom.com" in rcqueue.irc_mapping and (db_wiki["wiki"] not in rcqueue.irc_mapping["fandom.com"].updated_discussions and \
+								local_wiki.last_discussion_check+settings["irc_overtime"] > time.time()):  # I swear if another wiki farm ever starts using Fandom discussions I'm gonna use explosion magic
 							continue
 						else:
 							try:

@@ -10,6 +10,7 @@ from asyncio import TimeoutError
 from math import ceil
 
 import aiohttp
+import os
 
 logger = logging.getLogger("rcgcdb.discord")
 
@@ -152,15 +153,15 @@ def stack_message_list(messages: list) -> list:
 					messages.remove(message)
 					removed_msgs += 1  # helps with calculating message_group_index
 				messages[message_group_index] = stackable
-		elif messages[0].message_type() == "compact":
-			message_index = 0
-			while len(messages) > message_index+1:  # as long as we have messages to stack
-				if (len(messages[message_index]) + len(messages[message_index+1])) < 2000:  # if overall length is lower than 2000
-					messages[message_index].webhook_object["content"] = messages[message_index].webhook_object["content"] + "\n" + messages[message_index + 1].webhook_object["content"]
-					messages[message_index].length += (len(messages[message_index + 1]) + 1)
-					messages.remove(messages[message_index + 1])
-				else:
-					message_index += 1
+		# elif messages[0].message_type() == "compact":
+		# 	message_index = 0
+		# 	while len(messages) > message_index+1:  # as long as we have messages to stack
+		# 		if (len(messages[message_index]) + len(messages[message_index+1])) < 2000:  # if overall length is lower than 2000
+		# 			messages[message_index].webhook_object["content"] = messages[message_index].webhook_object["content"] + "\n" + messages[message_index + 1].webhook_object["content"]
+		# 			messages[message_index].length += (len(messages[message_index + 1]) + 1)
+		# 			messages.remove(messages[message_index + 1])
+		# 		else:
+		# 			message_index += 1
 	return messages
 
 
@@ -205,7 +206,7 @@ async def send_to_discord_webhook_monitoring(data: DiscordMessage):
 	header['Content-Type'] = 'application/json'
 	async with aiohttp.ClientSession(headers=header, timeout=aiohttp.ClientTimeout(5.0)) as session:
 		try:
-			result = await session.post("https://discord.com/api/webhooks/"+settings["monitoring_webhook"], data=repr(data))
+			result = await session.post("https://discord.com/api/webhooks/"+os.environ["MONITORING_WEBHOOK"], data=repr(data))
 		except (aiohttp.ClientConnectionError, aiohttp.ServerConnectionError):
 			logger.exception("Could not send the message to Discord")
 			return 3
