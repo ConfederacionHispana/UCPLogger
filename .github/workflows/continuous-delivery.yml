@@ -1,39 +1,37 @@
-name: Continuous Delivery
+name: Build and push Docker image
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 env:
   # Uses docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: confederacionhispana/ucplogger
 
 jobs:
-  Publish:
-    name: Publish image to GHCR
-    runs-on: ubuntu-latest
-    outputs:
-      deploy_tag: ${{ steps.save_tag.outputs.tag }}
+  build:
+    name: Build for ${{ matrix.os.prettyname }}
+    runs-on: ${{ matrix.os.fullname }}
+    strategy:
+      fail-fast: false
+      matrix:
+         os:
+           - { prettyname: Linux AMD64, fullname: ubuntu-22.04, platform: linux/amd64, cache_id: linux-amd64 }
+           - { prettyname: Linux ARM64, fullname: ubuntu-22.04, platform: linux/arm64, cache_id: linux-arm64 }
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - name: Checkout Project
-        uses: actions/checkout@f25a3a9f25bd5f4c5d77189cab02ff357b5aedeb # tag=v2
-        with:
-          submodules: true
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@94ab11c41e45d028884a99163086648e898eed25 # renovate: tag=v1.6.0
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@6af3c118c8376c675363897acf1757f7a9be6583 # tag=v1.13.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract metadata for Docker images
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Docker meta
         id: meta
-        uses: docker/metadata-action@f2a13332ac1ce8c0a71aeac48a150dbb1838ab67 # tag=v3
+        uses: docker/metadata-action@v4
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -42,28 +40,88 @@ jobs:
             type=raw,value=1.0.0
             type=raw,value=1.0.0.${{ github.run_number }}
             type=raw,value=latest,enable=${{ endsWith(github.ref, github.event.repository.default_branch) }}
-      - name: Build and push Docker image
-        uses: docker/build-push-action@7f9d37fa544684fb73bfe4835ed7214c255ce02b # renovate: tag=v2.9.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        if: matrix.os.platform == 'linux/arm64'
+   
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
         with:
-          push: true
-          context: .
-          build-args: |
-            BUILD_NUMBER=${{ github.run_number }}
-          tags: ${{ steps.meta.outputs.tags }}
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v4
+        with:
+          platforms: ${{ matrix.os.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: Save image tag for use in deploy job
-        id: save_tag
-        run: echo "tag=1.0.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
-  Deploy:
-    name: Deploy image
-    runs-on: ubuntu-latest
-    needs: [Publish]
-    steps:
-      - name: Checkout Project
-        uses: actions/checkout@f25a3a9f25bd5f4c5d77189cab02ff357b5aedeb # tag=v2
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true    
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-${{ matrix.os.cache_id }}
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-${{ matrix.os.cache_id }},mode=max
+
+      - name: Export digests
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digests
+        uses: actions/upload-artifact@v3
         with:
-          submodules: true
-      - name: Deploy image to production server
-        run: docker run -t caprover/cli-caprover:2.2.3 caprover deploy --caproverUrl ${{ secrets.CAPROVER_URL }} --caproverPassword ${{ secrets.CAPROVER_PASSWORD }} --caproverApp ${{ secrets.CAPROVER_APP }} --imageName ghcr.io/confederacionhispana/ucplogger:${{ needs.Publish.outputs.deploy_tag }}
+          name: digests
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Merge digests
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    needs:
+      - build
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v3
+        with:
+          name: digests
+          path: /tmp/digests
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=raw,value=1.0.0
+            type=raw,value=1.0.0.${{ github.run_number }}
+            type=raw,value=latest,enable=${{ endsWith(github.ref, github.event.repository.default_branch) }}
+  
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+  
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+      -
+        name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}         
