@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  ucplogger:
+    image: ghcr.io/confederacionhispana/ucplogger:1.0.0.2
+    environment:
+      - DATABASE_URL
+      - MONITORING_WEBHOOK
+
+  postgres:
+    image: postgres:14-alpine
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+
+volumes:
+  postgres-data:
